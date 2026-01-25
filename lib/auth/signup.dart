@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart'; // Import this
 import 'dart:convert';
 import '../routes.dart';
 
-
-const String baseUrl = "http://192.168.1.37:8000";
+// Check your IP address: Logic snippet had .36, UI had .37. Using .36 based on recent context.
+const String baseUrl = "http://192.168.1.36:8000";
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -14,53 +15,71 @@ class SignupPage extends StatefulWidget {
 }
 
 class _SignupPageState extends State<SignupPage> {
-
   final TextEditingController emailController = TextEditingController();
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController lastNameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   
-  String responseText = "";
+  // State variables from Logic
   bool _obscurePassword = true; 
+  bool _isLoading = false;
+  String responseText = ""; // Kept from UI just in case, though mostly unused now
 
+  // --- LOGIC FUNCTION (From your 2nd snippet) ---
   Future<void> sendData() async {
+    setState(() => _isLoading = true);
+
+    // Prepare full body data
     final body = {
-      "text": emailController.text,
+      "email": emailController.text,
+      "password": passwordController.text,
+      "first_name": firstNameController.text,
+      "last_name": lastNameController.text,
     };
 
     try {
       final response = await http.post(
-        Uri.parse("$baseUrl/api/store/"),
+        Uri.parse("$baseUrl/api/signup/"), // Endpoint
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(body),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Account created (Data sent)")),
-          );
+        final data = jsonDecode(response.body);
+        
+        // Check if server returned a key for auto-login
+        if (data.containsKey('key')) {
+           final prefs = await SharedPreferences.getInstance();
+           await prefs.setString('auth_token', data['key']);
+           
+           if(mounted) {
+             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Account Created & Logged In!")));
+             // Navigate to Home
+             Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
+           }
+        } else {
+           // If no key, redirect to login
+           if(mounted) {
+             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Account Created! Please Log In.")));
+             Navigator.pushNamed(context, AppRoutes.login);
+           }
+        }
+      } else {
+        if(mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Signup Failed: ${response.body}")));
         }
       }
     } catch (e) {
-      print("Error: $e");
-    }
-  }
-
-  Future<void> getData() async {
-    try {
-      final response = await http.get(Uri.parse("$baseUrl/api/get/"));
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        setState(() {
-          responseText = data['text'];
-        });
+      debugPrint("Error: $e");
+      if(mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
       }
-    } catch (e) {
-      print("Error: $e");
+    } finally {
+      if(mounted) setState(() => _isLoading = false);
     }
   }
 
+  // --- UI BUILD METHOD (From your 1st snippet) ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -140,6 +159,7 @@ class _SignupPageState extends State<SignupPage> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
+                        // Ensure you have this asset or replace with Icon(Icons.login)
                         Image.asset('assets/google.webp', height: 24, width: 24),
                         const SizedBox(width: 8),
                         const Text(
@@ -212,10 +232,12 @@ class _SignupPageState extends State<SignupPage> {
 
                   const SizedBox(height: 30),
 
+                  /// CREATE ACCOUNT BUTTON
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: sendData,
+                      // Update: Disable if loading, call sendData logic
+                      onPressed: _isLoading ? null : sendData,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black,
                         foregroundColor: Colors.white,
@@ -225,10 +247,16 @@ class _SignupPageState extends State<SignupPage> {
                         ),
                         elevation: 0,
                       ),
-                      child: const Text(
-                        "Create account",
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
+                      // Update: Show spinner if loading
+                      child: _isLoading 
+                        ? const SizedBox(
+                            height: 20, width: 20, 
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                          )
+                        : const Text(
+                            "Create account",
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
                     ),
                   ),
 
@@ -257,11 +285,6 @@ class _SignupPageState extends State<SignupPage> {
                       ),
                     ],
                   ),
-
-                  if (responseText.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Text("Server: $responseText", style: const TextStyle(fontSize: 12, color: Colors.green)),
-                  ]
                 ],
               ),
             ),
@@ -271,6 +294,7 @@ class _SignupPageState extends State<SignupPage> {
     );
   }
 
+  // Helper method from UI source
   static Widget _buildTextField(TextEditingController controller, String label) {
     return TextField(
       controller: controller,

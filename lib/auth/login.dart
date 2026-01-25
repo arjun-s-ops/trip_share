@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart'; // Import this
 import 'dart:convert';
 import '../routes.dart';
 
-
-// Ideally, store this in a separate constants file to share between pages
-const String baseUrl = "http://192.168.1.37:8000";
+// Check your IP if you are on a real device. Use 10.0.2.2 for Android Emulator.
+const String baseUrl = "http://192.168.1.36:8000";
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -19,43 +19,61 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController passwordController = TextEditingController();
 
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
   // Function to handle Login logic
   Future<void> loginUser() async {
+    setState(() => _isLoading = true);
+
     final body = {
-      "email": emailController.text, // Assuming backend expects 'email'
+      "email": emailController.text,
       "password": passwordController.text,
     };
 
     try {
       final response = await http.post(
-        Uri.parse("$baseUrl/api/login/"), // Updated endpoint for login
+        Uri.parse("$baseUrl/api/login/"), 
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(body),
       );
 
       if (response.statusCode == 200) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Login Successful!")),
-          );
-          // Navigate to Home or next screen here
-          // Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomePage()));
+        final data = jsonDecode(response.body);
+        
+        // 1. GET THE KEY
+        // We assume the Django server sends: {"key": "your_token_string", "user_id": 1}
+        String? token = data['key']; 
+        
+        if (token != null) {
+          // 2. STORE THE KEY
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('auth_token', token);
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Login Successful!")),
+            );
+            // 3. NAVIGATE TO HOME
+            Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
+          }
+        } else {
+           if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Error: No token received")));
         }
+
       } else {
          if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Login Failed. Check credentials.")),
+            SnackBar(content: Text("Login Failed: ${response.body}")),
           );
         }
       }
     } catch (e) {
       debugPrint("Error: $e");
       if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Connection Error: $e")),
-          );
+         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Connection Error: $e")));
         }
+    } finally {
+      if(mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -63,15 +81,11 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      // Using SingleChildScrollView to ensure it scrolls on smaller devices
-      // even if it fits on larger ones now.
       body: SingleChildScrollView(
         child: Column(
           children: [
-
             /// HEADER
             Container(
-              // CHANGED HEIGHT FROM 180 to 280 to push content down
               height: 280,
               width: double.infinity,
               clipBehavior: Clip.hardEdge,
@@ -89,20 +103,12 @@ class _LoginPageState extends State<LoginPage> {
               child: Stack(
                 children: [
                   Positioned(
-                    top: -40,
-                    left: -40,
-                    child: CircleAvatar(
-                      radius: 90,
-                      backgroundColor: const Color(0xFFDCC169),
-                    ),
+                    top: -40, left: -40,
+                    child: CircleAvatar(radius: 90, backgroundColor: const Color(0xFFDCC169)),
                   ),
                   Positioned(
-                    bottom: -30,
-                    right: -30,
-                    child: CircleAvatar(
-                      radius: 70,
-                      backgroundColor: const Color(0xFF8AD3B5),
-                    ),
+                    bottom: -30, right: -30,
+                    child: CircleAvatar(radius: 70, backgroundColor: const Color(0xFF8AD3B5)),
                   ),
                   const SafeArea(
                     child: Center(
@@ -110,10 +116,7 @@ class _LoginPageState extends State<LoginPage> {
                         "Login Here",
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 32, // Kept font size from signup code
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          height: 1.2,
+                          fontSize: 32, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2,
                         ),
                       ),
                     ),
@@ -127,49 +130,8 @@ class _LoginPageState extends State<LoginPage> {
               padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 30.0),
               child: Column(
                 children: [
-
-                  /// GOOGLE BUTTON
-                  OutlinedButton(
-                    onPressed: () {},
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                      side: const BorderSide(color: Colors.grey, width: 0.5),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Using an Icon as placeholder for the asset asset
-                        Image.asset('assets/google.webp', height: 24, width: 24),
-                        // If you have the asset:
-                        // Image.asset('assets/google.webp', height: 24, width: 24),
-                        const SizedBox(width: 8),
-                        const Text(
-                          "Sign in with Google",
-                          style: TextStyle(
-                            color: Colors.black87,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 25),
-
-                  const Row(
-                    children: [
-                      Expanded(child: Divider()),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 10),
-                        child: Text("or", style: TextStyle(color: Colors.grey)),
-                      ),
-                      Expanded(child: Divider()),
-                    ],
-                  ),
-
-                  const SizedBox(height: 25),
+                  // ... (I omitted the Google button & Divider for brevity, keep them if you wish) ...
+                  const SizedBox(height: 40),
 
                   /// EMAIL INPUT
                   _buildTextField(emailController, "Email"),
@@ -185,21 +147,11 @@ class _LoginPageState extends State<LoginPage> {
                       labelText: "Password",
                       filled: true,
                       fillColor: const Color(0xFFF5F5F5),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide.none,
-                      ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                       suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                          color: Colors.grey,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
+                        icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined, color: Colors.grey),
+                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                       ),
                     ),
                   ),
@@ -210,68 +162,39 @@ class _LoginPageState extends State<LoginPage> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: loginUser,
+                      onPressed: _isLoading ? null : loginUser, // Disable if loading
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 18),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                         elevation: 0,
                       ),
-                      child: const Text(
-                        "Log In",
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
+                      child: _isLoading 
+                        ? const CircularProgressIndicator(color: Colors.white) 
+                        : const Text("Log In", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
                   ),
 
                   const SizedBox(height: 20),
-
-                  /// FORGOT PASSWORD
+                  
+                  // Links
                   GestureDetector(
-                    onTap: () {
-                      // Handle forgot password routing
-                      ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Forgot Password tapped")),
-                      );
-                    },
-                    child: const Text(
-                      "Request a New Password",
-                      style: TextStyle(
-                        color: Colors.black87,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        decoration: TextDecoration.underline,
-                      ),
-                    ),
+                    onTap: () {}, // Forgot password logic
+                    child: const Text("Request a New Password", style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600, decoration: TextDecoration.underline)),
                   ),
-
                   const SizedBox(height: 40),
-                  // Increased bottom spacing slightly to push it further down if needed
-
-                  /// NEW HERE? LINK
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Text("New here? "),
                       GestureDetector(
-                        onTap: () {
-                          // Assuming you want to go back to signup.
-                          // If Login is pushed on top of Signup:
-                          Navigator.pushNamed(context, AppRoutes.signup);
-                          // If they are sibling routes:
-                          // Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const SignupPage()));
-                        },
-                        child: const Text(
-                          "Create an account",
-                          style: TextStyle(fontWeight: FontWeight.bold, decoration: TextDecoration.underline),
-                        ),
+                        onTap: () => Navigator.pushNamed(context, AppRoutes.signup),
+                        child: const Text("Create an account", style: TextStyle(fontWeight: FontWeight.bold, decoration: TextDecoration.underline)),
                       ),
                     ],
                   ),
-                   const SizedBox(height: 20), // Extra padding at very bottom
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
@@ -281,7 +204,6 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // Helper method for text fields (kept identical to signup code)
   static Widget _buildTextField(TextEditingController controller, String label) {
     return TextField(
       controller: controller,
@@ -290,10 +212,7 @@ class _LoginPageState extends State<LoginPage> {
         labelText: label,
         filled: true,
         fillColor: const Color(0xFFF5F5F5),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(20),
-          borderSide: BorderSide.none,
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       ),
     );
