@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import '../../routes.dart'; // Import routes to navigate on logout
+import '../../routes.dart';
+import 'package:flutter_app/config/config.dart';
+
 
 // UPDATED IP: Ensure this matches your computer's current IP (checked via ipconfig)
-const String baseUrl = "http://192.168.1.36:8000";
+const String baseUrl = AppConfig.baseUrl;
 
 class UserProfile extends StatefulWidget {
   const UserProfile({super.key});

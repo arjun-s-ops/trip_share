@@ -3,9 +3,10 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart'; // Import this
 import 'dart:convert';
 import '../routes.dart';
+import 'package:flutter_app/config/config.dart';
 
 // Check your IP if you are on a real device. Use 10.0.2.2 for Android Emulator.
-const String baseUrl = "http://192.168.1.36:8000";
+const String baseUrl = AppConfig.baseUrl;
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});

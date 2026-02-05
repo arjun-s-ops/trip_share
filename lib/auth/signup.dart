@@ -3,9 +3,11 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart'; // Import this
 import 'dart:convert';
 import '../routes.dart';
+import 'package:flutter_app/config/config.dart';
+
 
 // Check your IP address: Logic snippet had .36, UI had .37. Using .36 based on recent context.
-const String baseUrl = "http://192.168.1.36:8000";
+const String baseUrl = AppConfig.baseUrl;
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});

@@ -1,8 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+
+// Import your tabs
 import 'tabs/feed.dart';
 import 'tabs/search.dart';
 import 'tabs/profile.dart';
+
+// Import the Trip Details page
+import 'tabs/trip/trip_details.dart'; 
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -13,84 +18,114 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
-  late PageController _pageController;
 
-  @override
-  void initState() {
-    super.initState();
-    _pageController = PageController();
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
+  final List<Widget> _pages = const [
+    HomeFeed(),                  // 0
+    SearchGrid(),                // 1
+    SizedBox(),                  // 2 (Placeholder for the button logic)
+    Center(child: Text("Journey Page")), // 3
+    UserProfile(),               // 4
+  ];
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-    // Smooth scroll to the selected page
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
-  }
-
-  void _onPageChanged(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    // If the middle "+" button is tapped
+    if (index == 2) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const TripDetailsPage()),
+      );
+      return; // Stop here so we don't switch the tab index
+    }
+    
+    // Otherwise, switch the tab
+    setState(() => _selectedIndex = index);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: PageView(
-        controller: _pageController,
-        onPageChanged: _onPageChanged,
-        // ClampingScrollPhysics gives the "solid stop" feel at the ends of the list
-        physics: const ClampingScrollPhysics(),
-        children: const [
-          HomeFeed(),       // Index 0
-          SearchGrid(),     // Index 1
-          Placeholder(color: Colors.white), // Index 2 (Add Post - Placeholder)
-          Placeholder(color: Colors.white), // Index 3 (Likes - Placeholder)
-          UserProfile(),    // Index 4
-        ],
-      ),
-      bottomNavigationBar: Container(
-        // subtle top border for the navigation bar
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
+      backgroundColor: Colors.white,
+
+      body: SafeArea(
+        child: IndexedStack(
+          index: _selectedIndex,
+          children: _pages,
         ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(CupertinoIcons.house_fill),
-              label: 'Home',
+      ),
+
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(
+              top: BorderSide(color: Color(0xFFF0F0F0), width: 1),
             ),
-            BottomNavigationBarItem(
-              icon: Icon(CupertinoIcons.search),
-              label: 'Search',
+          ),
+          child: BottomNavigationBar(
+            currentIndex: _selectedIndex,
+            onTap: _onItemTapped,
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: Colors.white,
+            elevation: 0,
+            selectedItemColor: Colors.black,
+            unselectedItemColor: Colors.grey,
+            selectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 11,
             ),
-            BottomNavigationBarItem(
-              icon: Icon(CupertinoIcons.plus_app),
-              label: 'Add',
+            unselectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 11,
             ),
-            BottomNavigationBarItem(
-              icon: Icon(CupertinoIcons.heart),
-              label: 'Likes',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(CupertinoIcons.person),
-              label: 'Profile',
-            ),
-          ],
+            items: [
+              const BottomNavigationBarItem(
+                icon: Padding(
+                  padding: EdgeInsets.only(bottom: 4),
+                  child: Icon(CupertinoIcons.house_fill, size: 26),
+                ),
+                label: 'Home',
+              ),
+              const BottomNavigationBarItem(
+                icon: Padding(
+                  padding: EdgeInsets.only(bottom: 4),
+                  child: Icon(CupertinoIcons.compass, size: 28),
+                ),
+                label: 'Explore',
+              ),
+              BottomNavigationBarItem(
+                icon: Container(
+                  margin: const EdgeInsets.only(top: 2),
+                  height: 48,
+                  width: 48,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFFC107),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    CupertinoIcons.add,
+                    color: Colors.black87,
+                    size: 28,
+                  ),
+                ),
+                label: '',
+              ),
+              const BottomNavigationBarItem(
+                icon: Padding(
+                  padding: EdgeInsets.only(bottom: 4),
+                  child: Icon(CupertinoIcons.doc_text, size: 26),
+                ),
+                label: 'Journey',
+              ),
+              const BottomNavigationBarItem(
+                icon: Padding(
+                  padding: EdgeInsets.only(bottom: 4),
+                  child: Icon(CupertinoIcons.person, size: 26),
+                ),
+                label: 'Profile',
+              ),
+            ],
+          ),
         ),
       ),
     );
