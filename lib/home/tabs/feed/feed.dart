@@ -1,6 +1,7 @@
-import 'dart:math' as math; // Required for the rotation angle
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter_app/routes.dart'; // Make sure this path matches your project
+import 'package:flutter_app/routes.dart';
+import '../../../../services/notification_services.dart';
 
 void main() => runApp(const MyApp());
 
@@ -17,8 +18,36 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class HomeFeed extends StatelessWidget {
+class HomeFeed extends StatefulWidget {
   const HomeFeed({super.key});
+
+  @override
+  State<HomeFeed> createState() => _HomeFeedState();
+}
+
+class _HomeFeedState extends State<HomeFeed> {
+  int _unreadCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUnreadCount();
+  }
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      final count = await NotificationService.fetchUnreadCount();
+      if (mounted) setState(() => _unreadCount = count);
+    } catch (_) {}
+  }
+
+  Future<void> _openNotifications() async {
+    // Clear badge immediately when user taps bell
+    setState(() => _unreadCount = 0);
+    await Navigator.pushNamed(context, AppRoutes.notifications);
+    // Re-check on return in case new ones arrived while on that page
+    _loadUnreadCount();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,20 +65,38 @@ class HomeFeed extends StatelessWidget {
             leading: IconButton(
               icon: const Icon(Icons.add, color: Colors.black),
               onPressed: () {
-                // Using the named route we just set up in routes.dart!
                 Navigator.pushNamed(context, AppRoutes.post);
               },
             ),
 
             title: Image.asset('assets/logo.png', height: 120),
 
-            // NOTIFICATION BUTTON (RIGHT)
+            // NOTIFICATION BUTTON (RIGHT) with badge
             actions: [
-              IconButton(
-                icon: const Icon(Icons.notifications_none, color: Colors.black),
-                onPressed: () {
-                  // Notification action
-                },
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: GestureDetector(
+                  onTap: _openNotifications,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.notifications_none, color: Colors.black),
+                      if (_unreadCount > 0)
+                        Positioned(
+                          top: -2,
+                          right: -2,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Colors.black,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
@@ -204,9 +251,7 @@ class PostCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(25),
         boxShadow: const [
           BoxShadow(
-              color: Colors.black12,
-              blurRadius: 8,
-              offset: Offset(0, 4))
+              color: Colors.black12, blurRadius: 8, offset: Offset(0, 4))
         ],
       ),
       child: const Row(
@@ -230,9 +275,7 @@ class PostCard extends StatelessWidget {
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-              color: Colors.black26,
-              blurRadius: 8,
-              offset: Offset(0, 4))
+              color: Colors.black26, blurRadius: 8, offset: Offset(0, 4))
         ],
       ),
       child: Center(

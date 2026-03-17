@@ -5,6 +5,7 @@ import 'home/dashboard_screen.dart';
 import 'success.dart';
 import 'home/tabs/feed/feed.dart';
 import 'home/tabs/feed/post.dart';
+import 'models/notifications.dart';
 import 'home/tabs/join/search.dart';
 import 'home/tabs/join/trip_join.dart';
 import 'home/tabs/join/join_verification.dart';
@@ -35,6 +36,7 @@ class AppRoutes {
   static const String contactDetails   = '/contact-details';
   static const String groupChat        = '/group-chat';
   static const String groupDetails     = '/group-details';
+  static const String notifications    = '/notifications';
 
   static Map<String, WidgetBuilder> routes = {
     signup:           (context) => const SignupPage(),
@@ -53,5 +55,6 @@ class AppRoutes {
     paymentDetails:   (context) => const PaymentDetailsPage(),
     contactDetails:   (context) => const ContactDetailsPage(),
     groupChat:        (context) => const GroupPage(),
+    notifications:    (context) => const NotificationsPage(),
   };
 }
