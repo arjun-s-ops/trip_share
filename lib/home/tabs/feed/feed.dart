@@ -27,6 +27,7 @@ class HomeFeed extends StatefulWidget {
 
 class _HomeFeedState extends State<HomeFeed> {
   int _unreadCount = 0;
+  final GlobalKey<RefreshIndicatorState> _refreshKey = GlobalKey<RefreshIndicatorState>();
 
   @override
   void initState() {
@@ -41,11 +42,14 @@ class _HomeFeedState extends State<HomeFeed> {
     } catch (_) {}
   }
 
+  Future<void> _onRefresh() async {
+    await _loadUnreadCount();
+    // Add any other feed refresh logic here (e.g. reload posts)
+  }
+
   Future<void> _openNotifications() async {
-    // Clear badge immediately when user taps bell
     setState(() => _unreadCount = 0);
     await Navigator.pushNamed(context, AppRoutes.notifications);
-    // Re-check on return in case new ones arrived while on that page
     _loadUnreadCount();
   }
 
@@ -53,70 +57,75 @@ class _HomeFeedState extends State<HomeFeed> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            centerTitle: true,
-            floating: true,
-            elevation: 0,
-            backgroundColor: const Color(0xFFF8F9FA),
+      body: RefreshIndicator(
+        key: _refreshKey,
+        color: Colors.black,
+        onRefresh: _onRefresh,
+        child: CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              centerTitle: true,
+              floating: true,
+              elevation: 0,
+              backgroundColor: const Color(0xFFF8F9FA),
 
-            // PLUS BUTTON (LEFT)
-            leading: IconButton(
-              icon: const Icon(Icons.add, color: Colors.black),
-              onPressed: () {
-                Navigator.pushNamed(context, AppRoutes.post);
-              },
-            ),
+              // PLUS BUTTON (LEFT)
+              leading: IconButton(
+                icon: const Icon(Icons.add, color: Colors.black),
+                onPressed: () {
+                  Navigator.pushNamed(context, AppRoutes.post);
+                },
+              ),
 
-            title: Image.asset('assets/logo.png', height: 120),
+              title: Image.asset('assets/logo.png', height: 120),
 
-            // NOTIFICATION BUTTON (RIGHT) with badge
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: GestureDetector(
-                  onTap: _openNotifications,
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      const Icon(Icons.notifications_none, color: Colors.black),
-                      if (_unreadCount > 0)
-                        Positioned(
-                          top: -2,
-                          right: -2,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: Colors.black,
-                              shape: BoxShape.circle,
+              // NOTIFICATION BUTTON (RIGHT) with badge
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: GestureDetector(
+                    onTap: _openNotifications,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        const Icon(Icons.notifications_none, color: Colors.black),
+                        if (_unreadCount > 0)
+                          Positioned(
+                            top: -2,
+                            right: -2,
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Colors.black,
+                                shape: BoxShape.circle,
+                              ),
                             ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                const PostCard(
-                  username: "Celine.photo",
-                  caption: "Capturing the serene beauty of the hills today.",
-                ),
-                const PostCard(
-                  username: "Wanggg_",
-                  caption: "Perspective is everything in architecture.",
-                ),
-              ]),
+              ],
             ),
-          ),
-        ],
+
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  const PostCard(
+                    username: "Celine.photo",
+                    caption: "Capturing the serene beauty of the hills today.",
+                  ),
+                  const PostCard(
+                    username: "Wanggg_",
+                    caption: "Perspective is everything in architecture.",
+                  ),
+                ]),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -146,7 +155,6 @@ class PostCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
@@ -180,7 +188,6 @@ class PostCard extends StatelessWidget {
             ),
           ),
 
-          // Photo & Actions
           Stack(
             clipBehavior: Clip.none,
             children: [
@@ -197,15 +204,11 @@ class PostCard extends StatelessWidget {
                   ),
                 ),
               ),
-
-              // Like Pill
               Positioned(
                 bottom: -15,
                 left: 28,
                 child: _buildLikeButton(),
               ),
-
-              // Tilted Share Button
               Positioned(
                 bottom: -15,
                 right: 28,
@@ -214,7 +217,6 @@ class PostCard extends StatelessWidget {
             ],
           ),
 
-          // Caption
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 30, 20, 20),
             child: Column(
@@ -250,8 +252,7 @@ class PostCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(25),
         boxShadow: const [
-          BoxShadow(
-              color: Colors.black12, blurRadius: 8, offset: Offset(0, 4))
+          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 4))
         ],
       ),
       child: const Row(
@@ -274,8 +275,7 @@ class PostCard extends StatelessWidget {
         color: Color.fromARGB(255, 255, 255, 255),
         shape: BoxShape.circle,
         boxShadow: [
-          BoxShadow(
-              color: Colors.black26, blurRadius: 8, offset: Offset(0, 4))
+          BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 4))
         ],
       ),
       child: Center(

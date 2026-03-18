@@ -5,7 +5,7 @@ import '../models/notify.dart';
 import 'auth_service.dart';
 
 class NotificationService {
-  static const String baseUrl = 'http://192.168.1.52:8000/api';
+  static const String baseUrl = 'http://192.168.0.109:8000/api';
 
   /// Fetch all notifications for the logged-in user.
   static Future<List<Notification>> fetchNotifications() async {

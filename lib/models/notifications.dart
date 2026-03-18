@@ -16,13 +16,14 @@ class _NotificationsPageState extends State<NotificationsPage> {
   Future<_NotifData> _loadData() async {
     final notifications = await NotificationService.fetchNotifications();
 
-    // Collect actor IDs from follow-type notifications only
+    // Mark all as read as soon as page loads
+    await NotificationService.markAllRead();
+
     final followActorIds = notifications
         .where((n) => n.verb == 'started following you')
         .map((n) => n.actorId)
         .toList();
 
-    // Fetch real follow status from backend for all those actors
     final followingIds = followActorIds.isNotEmpty
         ? await NotificationService.fetchFollowingActorIds(followActorIds)
         : <int>{};
@@ -82,10 +83,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   notif: notif,
                   alreadyFollowed: followingIds.contains(notif.actorId),
                   onFollowed: (actorId) {
-                    // Update local state immediately without re-fetching
-                    setState(() {
-                      followingIds.add(actorId);
-                    });
+                    setState(() => followingIds.add(actorId));
                   },
                 );
               },
@@ -97,7 +95,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 }
 
-// Data holder for notifications + follow status
 class _NotifData {
   final List<model.Notification> notifications;
   final Set<int> followingActorIds;
@@ -177,9 +174,7 @@ class _NotificationCardState extends State<NotificationCard> {
     try {
       final nowFollowing = await NotificationService.followUser(widget.notif.actorId);
       setState(() => _isFollowing = nowFollowing);
-      if (nowFollowing) {
-        widget.onFollowed(widget.notif.actorId);
-      }
+      if (nowFollowing) widget.onFollowed(widget.notif.actorId);
     } catch (_) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to follow. Try again.')),
@@ -199,6 +194,8 @@ class _NotificationCardState extends State<NotificationCard> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
+        // Since we mark all as read on load, only show highlight for
+        // notifications that were unread when the page first loaded
         color: widget.notif.read ? Colors.white : const Color(0xFFEEF0FF),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
